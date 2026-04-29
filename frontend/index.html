@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Анализ вакансий</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+    }
+
+    /* Шапка */
+    .header {
+      background: #1a237e;
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 { font-size: 18px; }
+    .header span { font-size: 13px; opacity: 0.8; }
+    .header button {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    /* Основной layout */
+    .layout { display: flex; min-height: calc(100vh - 48px); }
+
+    /* Боковое меню */
+    .sidebar {
+      width: 200px;
+      background: white;
+      border-right: 1px solid #e0e0e0;
+      padding: 16px 0;
+      flex-shrink: 0;
+    }
+
+    .sidebar-item {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #555;
+      border-left: 3px solid transparent;
+    }
+
+    .sidebar-item:hover { background: #f5f5f5; }
+
+    .sidebar-item.active {
+      color: #1a237e;
+      border-left-color: #1a237e;
+      background: #e8eaf6;
+      font-weight: bold;
+    }
+
+    .sidebar-section {
+      font-size: 11px;
+      color: #aaa;
+      padding: 12px 20px 4px;
+      text-transform: uppercase;
+    }
+
+    /* Контент */
+    .content { flex: 1; padding: 24px; overflow-y: auto; }
+
+    h2 { font-size: 20px; color: #333; margin-bottom: 16px; }
+    h3 { font-size: 16px; color: #444; margin: 16px 0 10px; }
+
+    /* Карточки */
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Форма */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group.full { grid-column: span 2; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: #777;
+      margin-bottom: 4px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: #1a237e;
+    }
+
+    textarea { height: 90px; resize: vertical; }
+
+    /* Кнопки */
+    .btn {
+      padding: 8px 18px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .btn-primary { background: #1a237e; color: white; }
+    .btn-primary:hover { background: #283593; }
+    .btn-danger { background: #c62828; color: white; }
+    .btn-success { background: #2e7d32; color: white; }
+    .btn-gray { background: #eee; color: #333; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    /* Статистика дашборда */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stats-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #1a237e;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    /* Прогресс-бар */
+    .bar { height: 8px; background: #eee; border-radius: 4px; margin-top: 6px; }
+    .bar-fill { height: 100%; border-radius: 4px; }
+
+    /* Теги статуса */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .badge-green { background: #e8f5e9; color: #2e7d32; }
+    .badge-red { background: #ffebee; color: #c62828; }
+    .badge-gray { background: #f5f5f5; color: #666; }
+    .badge-blue { background: #e3f2fd; color: #1565c0; }
+    .badge-yellow {background: #fff9c4; color: #f57f17;}
+
+    /* Таблица */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px; background: #f5f5f5; color: #555; }
+    td { padding: 10px; border-top: 1px solid #eee; }
+    tr:hover td { background: #fafafa; }
+
+    /* Сообщения */
+    .msg {
+      padding: 10px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    .msg-success { background: #e8f5e9; color: #2e7d32; }
+    .msg-error { background: #ffebee; color: #c62828; }
+
+    /* Страница входа */
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e8eaf6;
+    }
+
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      width: 360px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    .login-box h2 { text-align: center; margin-bottom: 24px; }
+
+    /* Доступ закрыт */
+    .no-access {
+      text-align: center;
+      padding: 60px;
+      color: #aaa;
+      font-size: 15px;
+    }
+
+    /* Карточка резюме — кликабельная */
+    .resume-card {
+      cursor: pointer;
+      transition: box-shadow 0.15s;
+    }
+    .resume-card:hover {
+      box-shadow: 0 4px 12px rgba(26,35,126,0.15);
+    }
+
+    /* Карточка вакансии — кликабельная */
+    .vacancy-card {
+      cursor: pointer;
+      transition: box-shadow 0.15s;
+    }
+    .vacancy-card:hover {
+      box-shadow: 0 4px 12px rgba(26,35,126,0.15);
+    }
+
+    /* Детальная страница резюме */
+    .resume-detail-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .resume-detail-meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    .skill-tag {
+      display: inline-block;
+      background: #e3f2fd;
+      color: #1565c0;
+      border-radius: 12px;
+      padding: 3px 10px;
+      font-size: 12px;
+      margin: 3px 2px;
+    }
+
+    .content-block {
+      white-space: pre-wrap;
+      font-size: 14px;
+      color: #333;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===== СТРАНИЦА ВХОДА ===== -->
+  <div v-if="!currentUser" class="login-page">
+    <div class="login-box">
+      <h2>🔐 Вход в систему</h2>
+      <div v-if="message" class="msg" :class="messageType === 'error' ? 'msg-error' : 'msg-success'">
+        {{ message }}
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input v-model="loginForm.email" type="email" placeholder="user@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input v-model="loginForm.password" type="password" placeholder="••••••" />
+      </div>
+      <button class="btn btn-primary" style="width:100%" @click="login">
+        Войти
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== ОСНОВНОЙ ИНТЕРФЕЙС ===== -->
+  <div v-else>
+
+    <!-- Шапка -->
+    <div class="header">
+      <h1>📋 Анализ вакансий</h1>
+      <div style="display:flex; align-items:center; gap:16px">
+        <span>{{ currentUser.last_name }} {{ currentUser.first_name }} {{ currentUser.surname }} ({{ roleLabel }})</span>
+        <button @click="logout">Выйти</button>
+      </div>
+    </div>
+
+    <div class="layout">
+
+      <!-- Боковое меню -->
+      <div class="sidebar">
+
+        <!-- HR-менеджер -->
+        <template v-if="role === 'hr'">
+          <div class="sidebar-section">HR-менеджер</div>
+          <div class="sidebar-item" :class="{ active: tab === 'vacancies' }" @click="go('vacancies')">Вакансии</div>
+          <div class="sidebar-item" :class="{ active: tab === 'resumes' }" @click="go('resumes')">Резюме</div>
+          <div class="sidebar-item" :class="{ active: tab === 'analyze' }" @click="go('analyze')">Анализ</div>
+          <div class="sidebar-item" :class="{ active: tab === 'reports' }" @click="go('reports')">Отчёты</div>
+        </template>
+
+        <!-- Руководитель отдела -->
+        <template v-if="role === 'manager'">
+          <div class="sidebar-section">Руководитель</div>
+          <div class="sidebar-item" :class="{ active: tab === 'dashboard' }" @click="go('dashboard')">Дашборд</div>
+          <div class="sidebar-item" :class="{ active: tab === 'resumes' }" @click="go('resumes')">Резюме</div>
+          <div class="sidebar-item" :class="{ active: tab === 'reports' }" @click="go('reports')">Отчёты</div>
+        </template>
+
+        <!-- Администратор -->
+        <template v-if="role === 'admin'">
+          <div class="sidebar-section">Администратор</div>
+          <div class="sidebar-item" :class="{ active: tab === 'dashboard' }" @click="go('dashboard')">Дашборд</div>
+          <div class="sidebar-item" :class="{ active: tab === 'users' }" @click="go('users')">Пользователи</div>
+          <div class="sidebar-item" :class="{ active: tab === 'logs' }" @click="go('logs')">Журнал</div>
+          <div class="sidebar-item" :class="{ active: tab === 'vacancies' }" @click="go('vacancies')">Вакансии</div>
+          <div class="sidebar-item" :class="{ active: tab === 'resumes' }" @click="go('resumes')">Резюме</div>
+          <div class="sidebar-item" :class="{ active: tab === 'reports' }" @click="go('reports')">Отчёты</div>
+        </template>
+
+      </div>
+
+      <!-- Контент -->
+      <div class="content">
+
+        <!-- Сообщение -->
+        <div v-if="message" class="msg" :class="messageType === 'error' ? 'msg-error' : 'msg-success'">
+          {{ message }}
+        </div>
+
+        <!-- ===== ДАШБОРД ===== -->
+        <div v-if="tab === 'dashboard'">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
+            <h2 style="margin:0">📊 Дашборд</h2>
+            <div v-if="role === 'admin'" style="display:flex; gap:6px">
+              <button v-for="p in [{k:'all',l:'Всё время'},{k:'month',l:'Месяц'},{k:'week',l:'Неделя'}]" :key="p.k"
+                @click="setDashboardPeriod(p.k)"
+                :style="dashboardPeriod===p.k ? 'background:#1a237e;color:#fff;border:1px solid #1a237e;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px' : 'background:#fff;color:#1a237e;border:1px solid #1a237e;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px'">
+                {{ p.l }}
+              </button>
+            </div>
+          </div>
+
+          <div :class="role === 'manager' ? 'stats-grid-4' : 'stats-grid'" v-if="dashboard">
+            <div class="stat-card">
+              <div class="stat-value">{{ dashboard.summary.total_vacancies }}</div>
+              <div class="stat-label">Всего вакансий</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{{ dashboard.summary.active_vacancies }}</div>
+              <div class="stat-label">Активных вакансий</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{{ dashboard.summary.total_resumes }}</div>
+              <div class="stat-label">Резюме в базе</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{{ dashboard.summary.total_reports }}</div>
+              <div class="stat-label">Отчётов</div>
+            </div>
+            <div class="stat-card" v-if="role === 'admin'">
+              <div class="stat-value">{{ dashboard.summary.total_users }}</div>
+              <div class="stat-label">Всего пользователей</div>
+            </div>
+          </div>
+
+          <div class="card" v-if="role === 'manager' && dashboard">
+            <h3>Статус резюме</h3>
+            <table>
+              <thead>
+                <tr><th>Статус</th><th>Кол-во</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>✅ Одобрено</td>
+                  <td><span class="badge badge-green">{{ dashboard.resume_statuses.approved }}</span></td>
+                </tr>
+                <tr>
+                  <td>❌ Отклонено</td>
+                  <td><span class="badge badge-red">{{ dashboard.resume_statuses.rejected }}</span></td>
+                </tr>
+                <tr>
+                  <td>⏳ На рассмотрении</td>
+                  <td><span class="badge badge-yellow">{{ dashboard.resume_statuses.pending }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="role === 'admin' && dashboard" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px">
+            <div class="card" style="padding:25px;height: 450px">
+              <h3 style="margin:0 0 6px">📊 Статус резюме</h3>
+              <canvas ref="chartResumes" height="250px"></canvas>
+            </div>
+            <div class="card" style="padding:10px; height: 450px;" v-if="dashboard.users_by_role">
+              <h3 style="margin:0 0 6px">👤 Пользователи по ролям</h3>
+              <canvas ref="chartUsers" height="200px"></canvas>
+            </div>
+          </div>
+
+          <div class="card" v-if="dashboard">
+            <h3>Последние отчёты</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Вакансия</th>
+                  <th>Всего резюме</th>
+                  <th>Подходит</th>
+                  <th>Не подходит</th>
+                  <th>Дата</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in dashboard.recent_reports" :key="r.report_id">
+                  <td>{{ r.report_id }}</td>
+                  <td>{{ r.vacancy }}</td>
+                  <td>{{ r.total }}</td>
+                  <td><span class="badge badge-green">{{ r.relevant }}</span></td>
+                  <td><span class="badge badge-red">{{ r.rejected }}</span></td>
+                  <td>{{ formatDate(r.created_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== ПОЛЬЗОВАТЕЛИ ===== -->
+        <div v-if="tab === 'users'">
+          <h2>👥 Пользователи</h2>
+
+          <div class="card">
+            <h3>Добавить пользователя</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Имя</label>
+                <input v-model="newUser.first_name" placeholder="Иван" />
+              </div>
+              <div class="form-group">
+                <label>Фамилия</label>
+                <input v-model="newUser.last_name" placeholder="Иванов" />
+              </div>
+              <div class="form-group">
+                <label>Отчество</label>
+                <input v-model="newUser.surname" placeholder="Иванович" />
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input v-model="newUser.email" placeholder="ivan@mail.ru" />
+              </div>
+              <div class="form-group">
+                <label>Пароль</label>
+                <input v-model="newUser.password" type="password" />
+              </div>
+              <div class="form-group">
+                <label>Роль</label>
+                <select v-model="newUser.role">
+                  <option value="admin">Администратор</option>
+                  <option value="manager">Руководитель отдела</option>
+                  <option value="hr">HR-менеджер</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Телефон</label>
+                <input v-model="newUser.phone" placeholder="+7..." />
+              </div>
+            </div>
+            <button class="btn btn-primary" @click="addUser">Добавить</button>
+          </div>
+
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th>Email</th>
+                  <th>Роль</th>
+                  <th>Телефон</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="u in users" :key="u.id">
+                  <td>{{ u.last_name }} {{ u.first_name }} {{ u.surname }}</td>
+                  <td>{{ u.email }}</td>
+                  <td>
+                    <span class="badge badge-blue">{{ u.role_name }}</span>
+                  </td>
+                  <td>{{ u.phone || '—' }}</td>
+                  <td style="display:flex; gap:6px">
+                    <button class="btn btn-gray btn-sm" @click="startEditUser(u)">
+                      ✏️ Редактировать
+                    </button>
+                    <button class="btn btn-danger btn-sm" @click="deleteUser(u.id)">
+                      Удалить
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:16px">
+            <button class="btn btn-gray" @click="downloadBackup">
+              💾 Резервная копия
+            </button>
+          </div>
+
+          <!-- Форма редактирования -->
+          <div class="card" v-if="editingUser" style="border:2px solid #1a237e">
+            <h3>Редактировать: {{ editingUser.last_name }} {{ editingUser.first_name }} {{ editingUser.surname }}</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Имя</label>
+                <input v-model="editingUser.first_name" />
+              </div>
+              <div class="form-group">
+                <label>Фамилия</label>
+                <input v-model="editingUser.last_name" />
+              </div>
+              <div class="form-group">
+                <label>Отчество</label>
+                <input v-model="editingUser.surname" />
+              </div>
+              <div class="form-group">
+                <label>Телефон</label>
+                <input v-model="editingUser.phone" placeholder="+7..." />
+              </div>
+              <div class="form-group">
+                <label>Роль</label>
+                <select v-model="editingUser.role">
+                  <option value="admin">Администратор</option>
+                  <option value="manager">Руководитель отдела</option>
+                  <option value="hr">HR-менеджер</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Новый пароль (необязательно)</label>
+                <input v-model="editingUser.password" type="password" placeholder="изменить пароль..." />
+              </div>
+            </div>
+            <div style="display:flex; gap:10px">
+              <button class="btn btn-primary" @click="updateUser">Сохранить</button>
+              <button class="btn btn-gray" @click="cancelEditUser">Отмена</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== ЖУРНАЛ ===== -->
+        <div v-if="tab === 'logs'">
+          <h2>📜 Журнал действий</h2>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Пользователь</th>
+                  <th>Действие</th>
+                  <th>Дата</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="log in logs" :key="log.id">
+                  <td>{{ log.user_name }}</td>
+                  <td>{{ log.action }}</td>
+                  <td>{{ formatDate(log.created_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== ВАКАНСИИ ===== -->
+        <div v-if="tab === 'vacancies'">
+          <h2>💼 Вакансии</h2>
+
+          <div class="card" v-if="role === 'hr'">
+            <h3>Добавить вакансию</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Название</label>
+                <input v-model="newVacancy.title" placeholder="1С-разработчик" />
+              </div>
+              <div class="form-group">
+                <label>ID компании</label>
+                <input v-model="newVacancy.company" type="number" placeholder="1" />
+              </div>
+              <div class="form-group">
+                <label>Требуемый опыт (лет)</label>
+                <input v-model="newVacancy.exp_required" placeholder="1" />
+              </div>
+              <div class="form-group">
+                <label>Занятость</label>
+                <input v-model="newVacancy.employment" placeholder="Полная занятость" />
+              </div>
+              <div class="form-group">
+                <label>Отрасль</label>
+                <input v-model="newVacancy.industry" placeholder="IT" />
+              </div>
+              <div class="form-group">
+                <label>Мин. зарплата</label>
+                <input v-model="newVacancy.min_salary" type="number" placeholder="50000" />
+              </div>
+              <div class="form-group">
+                <label>Макс. зарплата</label>
+                <input v-model="newVacancy.max_salary" type="number" placeholder="100000" />
+              </div>
+              <div class="form-group">
+                <label>Город</label>
+                <input v-model="newVacancy.location" placeholder="Москва" />
+              </div>
+              <div class="form-group full">
+                <label>Требования (навыки, задачи)</label>
+                <textarea v-model="newVacancy.description" placeholder="Знание 1С:Предприятие, опыт конфигурирования..."></textarea>
+              </div>
+            </div>
+            <button class="btn btn-primary" @click="addVacancy">Добавить</button>
+          </div>
+
+          <div v-for="v in vacancies" :key="v.id" class="card vacancy-card" @click="openVacancy(v.id)">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div>
+                <strong>{{ v.title }}</strong>
+                <span class="badge badge-blue" style="margin-left:8px">{{ v.company_name }}</span>
+                <span v-if="v.location" style="color:#888; font-size:12px; margin-left:8px">
+                  📍 {{ v.location }}
+                </span>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center">
+                <span v-if="v.min_salary" style="font-size:13px; color:#333">
+                  {{ v.min_salary.toLocaleString() }} — {{ v.max_salary.toLocaleString() }} {{ v.currency }}
+                </span>
+                <button
+                  v-if="role === 'hr'"
+                  class="btn btn-danger btn-sm"
+                  @click.stop="archiveVacancy(v.id)"
+                >В архив</button>
+              </div>
+            </div>
+            <p style="font-size:13px; color:#777; margin-top:8px">
+              {{ v.description.slice(0, 150) }}{{ v.description.length > 150 ? '...' : '' }}
+            </p>
+          </div>
+        </div>
+
+        <!-- ===== ДЕТАЛЬНАЯ СТРАНИЦА ВАКАНСИИ ===== -->
+        <div v-if="tab === 'vacancy-detail' && selectedVacancy">
+          <div class="resume-detail-header">
+            <button class="btn btn-gray" @click="go('vacancies')">← Назад</button>
+            <h2 style="margin:0">{{ selectedVacancy.title }}</h2>
+            <span class="badge badge-blue">{{ selectedVacancy.company_name }}</span>
+          </div>
+
+          <div class="resume-detail-meta">
+            <span v-if="selectedVacancy.manager_name">👤 Менеджер: {{ selectedVacancy.manager_name }}</span>
+            <span>📅 Создано: {{ formatDate(selectedVacancy.created_at) }}</span>
+          </div>
+
+          <div class="card" style="margin-top:16px">
+            <h3>Описание</h3>
+            <div class="content-block">{{ selectedVacancy.description }}</div>
+          </div>
+
+          <div class="card" v-if="selectedVacancy.requirements && selectedVacancy.requirements.length">
+            <h3>Требования</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Требование</th>
+                  <th>Тип</th>
+                  <th>Значение</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="req in selectedVacancy.requirements" :key="req.id">
+                  <td>{{ req.requirement_name }}</td>
+                  <td><span class="badge badge-gray">{{ req.requirement_type_name }}</span></td>
+                  <td>{{ req.value }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== РЕЗЮМЕ ===== -->
+        <div v-if="tab === 'resumes'">
+          <h2>📄 Резюме</h2>
+
+          <div class="card" v-if="role === 'hr'">
+            <h3>Добавить резюме</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Должность</label>
+                <input v-model="newResume.title" placeholder="1С-разработчик" />
+              </div>
+              <div class="form-group">
+                <label>Опыт (лет)</label>
+                <input v-model="newResume.exp" placeholder="2" />
+              </div>
+              <div class="form-group">
+                <label>Образование</label>
+                <input v-model="newResume.education" placeholder="Высшее" />
+              </div>
+              <div class="form-group">
+                <label>Занятость</label>
+                <input v-model="newResume.employment" placeholder="Полная занятость" />
+              </div>
+              <div class="form-group">
+                <label>Отрасль</label>
+                <input v-model="newResume.industry" placeholder="IT" />
+              </div>
+              <div class="form-group">
+                <label>Зарплата ожидаемая</label>
+                <input v-model="newResume.salary" type="number" placeholder="80000" />
+              </div>
+              <div class="form-group full">
+                <label>Навыки (через запятую)</label>
+                <input v-model="newResume.skills" placeholder="Python, Django, SQL" />
+              </div>
+            </div>
+            <button class="btn btn-primary" @click="addResume">Добавить</button>
+          </div>
+
+          <div v-if="role === 'manager' && visibleResumes.length === 0" class="card" style="text-align:center; color:#aaa; padding:32px">
+            ✅ Все резюме рассмотрены
+          </div>
+
+          <div v-for="r in visibleResumes" :key="r.id" class="card resume-card" @click="openResume(r.id)">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <strong>{{ r.title }}</strong>
+              <div style="display:flex; gap:8px; align-items:center">
+                <span class="badge"
+                  :class="{
+                    'badge-green': r.status === 'approved',
+                    'badge-red': r.status === 'rejected',
+                    'badge-gray': r.status === 'pending',
+                  }"
+                >
+                  {{ statusLabel(r.status) }}
+                </span>
+
+                <!-- Руководитель отдела — одобряет/отклоняет -->
+                <template v-if="role === 'manager'">
+                  <button class="btn btn-success btn-sm" @click.stop="reviewResume(r.id, 'approved')">
+                    ✅
+                  </button>
+                  <button class="btn btn-danger btn-sm" @click.stop="reviewResume(r.id, 'rejected')">
+                    ❌
+                  </button>
+                </template>
+              </div>
+            </div>
+            <p style="font-size:13px; color:#777; margin-top:8px">
+              {{ r.content.slice(0, 150) }}{{ r.content.length > 150 ? '...' : '' }}
+            </p>
+            <p v-if="r.comment" style="font-size:12px; color:#999; margin-top:4px">
+              💬 {{ r.comment }}
+            </p>
+          </div>
+        </div>
+
+        <!-- ===== ДЕТАЛЬНАЯ СТРАНИЦА РЕЗЮМЕ ===== -->
+        <div v-if="tab === 'resume-detail' && selectedResume">
+          <div class="resume-detail-header">
+            <button class="btn btn-gray" @click="go('resumes')">← Назад</button>
+            <h2 style="margin:0">{{ selectedResume.title }}</h2>
+            <span class="badge"
+              :class="{
+                'badge-green': selectedResume.status === 'approved',
+                'badge-red': selectedResume.status === 'rejected',
+                'badge-gray': selectedResume.status === 'pending',
+              }"
+            >{{ statusLabel(selectedResume.status) }}</span>
+          </div>
+
+          <div class="resume-detail-meta">
+            <span>📅 Добавлено: {{ formatDate(selectedResume.created_at) }}</span>
+            <span>🔄 Обновлено: {{ formatDate(selectedResume.updated_at) }}</span>
+            <span v-if="selectedResume.source">🌐 Источник: {{ selectedResume.source }}</span>
+          </div>
+
+          <div class="card" style="margin-top:16px">
+            <h3>Содержание</h3>
+            <div class="content-block">{{ selectedResume.content }}</div>
+          </div>
+
+          <div class="card" v-if="selectedResume.skills && selectedResume.skills.length">
+            <h3>Навыки</h3>
+            <div>
+              <span v-for="s in selectedResume.skills" :key="s.id" class="skill-tag">
+                {{ s.skill_name }}
+              </span>
+            </div>
+          </div>
+
+          <div class="card" v-if="selectedResume.comment">
+            <h3>Комментарий</h3>
+            <p style="font-size:14px; color:#555">{{ selectedResume.comment }}</p>
+          </div>
+
+          <div class="card" v-if="role === 'manager' && selectedResume.status === 'pending'">
+            <h3>Решение</h3>
+            <div style="display:flex; gap:12px">
+              <button class="btn btn-success" @click="reviewResumeDetail(selectedResume.id, 'approved')">
+                ✅ Одобрить
+              </button>
+              <button class="btn btn-danger" @click="reviewResumeDetail(selectedResume.id, 'rejected')">
+                ❌ Отклонить
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== АНАЛИЗ ===== -->
+        <div v-if="tab === 'analyze'">
+          <h2>🔍 Анализ резюме</h2>
+
+          <div class="card">
+            <div class="form-group">
+              <label>Выберите вакансию</label>
+              <select v-model="selectedVacancyId">
+                <option disabled value="">-- выберите --</option>
+                <option v-for="v in vacancies" :key="v.id" :value="v.id">
+                  {{ v.title }}
+                </option>
+              </select>
+            </div>
+            <button
+              class="btn btn-primary"
+              :disabled="!selectedVacancyId || analyzing"
+              @click="runAnalysis"
+            >
+              {{ analyzing ? '⏳ Анализирую...' : '▶ Запустить анализ' }}
+            </button>
+          </div>
+
+          <div v-if="analysisResult">
+            <div class="card" style="background:#e8f5e9">
+              <strong>Вакансия: {{ analysisResult.vacancy }}</strong>
+              <div style="margin-top:8px; display:flex; gap:24px">
+                <span>Всего: <b>{{ analysisResult.total }}</b></span>
+                <span style="color:green">Подходит: <b>{{ analysisResult.relevant_count }}</b></span>
+                <span style="color:red">Не подходит: <b>{{ analysisResult.rejected_count }}</b></span>
+              </div>
+            </div>
+
+            <h3>✅ Подходящие кандидаты</h3>
+            <div v-for="r in analysisResult.relevant" :key="r.resume_id" class="card">
+              <div style="display:flex; justify-content:space-between">
+                <strong>{{ r.resume }}</strong>
+                <span style="color:green; font-weight:bold">{{ r.score_percent }}%</span>
+              </div>
+              <div class="bar">
+                <div class="bar-fill" :style="{ width: r.score_percent + '%', background: '#4caf50' }"></div>
+              </div>
+            </div>
+
+            <h3>❌ Не подходящие</h3>
+            <div v-for="r in analysisResult.rejected" :key="r.resume_id" class="card">
+              <div style="display:flex; justify-content:space-between">
+                <strong>{{ r.resume }}</strong>
+                <span style="color:red">{{ r.score_percent }}%</span>
+              </div>
+              <div class="bar">
+                <div class="bar-fill" :style="{ width: r.score_percent + '%', background: '#ef5350' }"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== ОТЧЁТЫ ===== -->
+        <div v-if="tab === 'reports'">
+          <h2>📑 Отчёты</h2>
+          <div v-for="report in reports" :key="report.id" class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div>
+                <strong>Отчёт #{{ report.id }}</strong> —
+                <span style="color:#555">{{ report.vacancy_title }}</span>
+                <span style="font-size:12px; color:#aaa; margin-left:8px">
+                  {{ formatDate(report.created_at) }}
+                </span>
+              </div>
+              <button class="btn btn-gray btn-sm" @click="exportReport(report.id)">
+                  📥 Excel
+              </button>
+            </div>
+            <div style="margin-top:12px">
+              <div v-for="m in report.metrics" :key="m.id"
+                @click="openResume(m.resume)"
+                style="display:flex; justify-content:space-between; padding:4px 6px; font-size:13px; border-top:1px solid #f0f0f0; cursor:pointer; border-radius:4px;"
+                onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''">
+                <span style="color:#1a237e; text-decoration:underline">{{ m.resume_title }}</span>
+                <div style="display:flex; align-items:center; gap:8px">
+                  <span :style="{ color: parseFloat(m.value) >= 0.5 ? 'green' : 'red' }">
+                    {{ (parseFloat(m.value) * 100).toFixed(1) }}%
+                  </span>
+                  <span class="badge"
+                    :class="{
+                      'badge-green': m.resume_status === 'approved',
+                      'badge-red': m.resume_status === 'rejected',
+                      'badge-gray': m.resume_status === 'pending',
+                    }"
+                  >{{ statusLabel(m.resume_status) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = `${window.location.origin}/api`
+const { createApp } = Vue
+
+createApp({
+  data() {
+    return {
+      currentUser: null,
+      role: null,
+      tab: null,
+      message: '',
+      messageType: 'success',
+
+      loginForm: { email: '', password: '' },
+
+      users: [],
+      logs: [],
+      vacancies: [],
+      resumes: [],
+      reports: [],
+      dashboard: null,
+      dashboardPeriod: 'all',
+
+      newUser: { first_name: '', last_name: '', email: '', password: '', role: 'hr', phone: '' },
+      newVacancy: { title: '', description: '', company: '', min_salary: '', max_salary: '', location: '', exp_required: '', employment: '', industry: '' },
+      newResume: { title: '', exp: '', education: '', employment: '', industry: '', salary: '', skills: '' },
+
+      selectedVacancyId: '',
+      analysisResult: null,
+      analyzing: false,
+      selectedResume: null,
+      selectedVacancy: null,
+      editingUser: null,
+      charts: {},
+    }
+  },
+
+  computed: {
+    roleLabel() {
+      const labels = { admin: 'Администратор', manager: 'Руководитель', hr: 'HR-менеджер' }
+      return labels[this.role] || ''
+    },
+    visibleResumes() {
+      if (this.role === 'manager') return this.resumes.filter(r => r.status === 'pending')
+      return this.resumes
+    }
+  },
+
+  mounted() {
+    this.checkAuth()
+  },
+
+  methods: {
+    showMsg(text, type = 'success') {
+      this.message = text
+      this.messageType = type
+      setTimeout(() => { this.message = '' }, 4000)
+    },
+
+    formatDate(dt) {
+      return new Date(dt).toLocaleString('ru')
+    },
+
+    statusLabel(s) {
+      return { approved: 'Одобрено', rejected: 'Отклонено', pending: 'На рассмотрении' }[s] || s
+    },
+
+    async request(url, options = {}) {
+      const res = await fetch(`${API}${url}`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      })
+      return res
+    },
+
+    async checkAuth() {
+      const res = await this.request('/auth/me/')
+      if (res.ok) {
+        const data = await res.json()
+        this.currentUser = data.user
+        this.role = data.role
+        this.setDefaultTab()
+        this.loadCurrentTab()
+      }
+    },
+
+    setDefaultTab() {
+      const tabs = {
+        admin: 'dashboard',
+        manager: 'dashboard',
+        hr: 'vacancies',
+      }
+      this.tab = tabs[this.role]
+    },
+
+    go(tab) {
+      this.tab = tab
+      this.message = ''
+      this.loadCurrentTab()
+    },
+
+    loadCurrentTab() {
+      const loaders = {
+        dashboard: this.loadDashboard,
+        users: this.loadUsers,
+        logs: this.loadLogs,
+        vacancies: this.loadVacancies,
+        resumes: this.loadResumes,
+        reports: this.loadReports,
+        analyze: this.loadVacancies,
+      }
+      if (loaders[this.tab]) loaders[this.tab]()
+    },
+
+    // --- Авторизация ---
+
+    async login() {
+      const res = await this.request('/auth/login/', {
+        method: 'POST',
+        body: JSON.stringify(this.loginForm),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        this.currentUser = data.user
+        this.role = data.role
+        this.setDefaultTab()
+        this.loadCurrentTab()
+      } else {
+        this.showMsg(data.error, 'error')
+      }
+    },
+
+    async logout() {
+      await this.request('/auth/logout/', { method: 'POST' })
+      this.currentUser = null
+      this.role = null
+      this.tab = null
+    },
+
+    // --- Загрузка данных ---
+
+    async loadDashboard() {
+      const res = await this.request(`/dashboard/?period=${this.dashboardPeriod}`)
+      if (res.ok) {
+        this.dashboard = await res.json()
+        if (this.role === 'admin') {
+          this.$nextTick(() => this.renderCharts())
+        }
+      }
+    },
+
+    async setDashboardPeriod(p) {
+      this.dashboardPeriod = p
+      await this.loadDashboard()
+    },
+
+    renderCharts() {
+      Object.values(this.charts).forEach(c => c && c.destroy())
+      this.charts = {}
+
+      if (this.$refs.chartResumes) {
+        const s = this.dashboard.resume_statuses
+        this.charts.resumes = new Chart(this.$refs.chartResumes, {
+          type: 'doughnut',
+          data: {
+            labels: ['Одобрено', 'Отклонено', 'На рассмотрении'],
+            datasets: [{ data: [s.approved, s.rejected, s.pending], backgroundColor: ['#4caf50', '#ef5350', '#90a4ae'] }]
+          },
+          options: { plugins: { legend: { position: 'bottom' } } }
+        })
+      }
+
+      if (this.$refs.chartUsers && this.dashboard.users_by_role) {
+        const u = this.dashboard.users_by_role
+        this.charts.users = new Chart(this.$refs.chartUsers, {
+          type: 'bar',
+          data: {
+            labels: ['Администраторы', 'Руководители', 'HR-менеджеры'],
+            datasets: [{ label: 'Кол-во', data: [u.admin, u.manager, u.hr], backgroundColor: ['#1a237e', '#283593', '#3949ab'] }]
+          },
+          options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        })
+      }
+
+      if (this.$refs.chartTopVacancies && this.dashboard.top_vacancies && this.dashboard.top_vacancies.length) {
+        const tv = this.dashboard.top_vacancies
+        this.charts.topVacancies = new Chart(this.$refs.chartTopVacancies, {
+          type: 'bar',
+          data: {
+            labels: tv.map(v => v.title),
+            datasets: [{ label: 'Отчётов', data: tv.map(v => v.report_count), backgroundColor: '#1565c0' }]
+          },
+          options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        })
+      }
+
+      if (this.$refs.chartCities && this.dashboard.vacancies_by_city && this.dashboard.vacancies_by_city.length) {
+        const cities = this.dashboard.vacancies_by_city
+        this.charts.cities = new Chart(this.$refs.chartCities, {
+          type: 'bar',
+          data: {
+            labels: cities.map(c => c.value || 'Не указан'),
+            datasets: [{
+              label: 'Вакансий',
+              data: cities.map(c => c.count),
+              backgroundColor: ['#1a237e','#283593','#3949ab','#3f51b5','#5c6bc0','#7986cb','#9fa8da','#c5cae9'],
+            }]
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+          }
+        })
+      }
+    },
+
+    async loadUsers() {
+      const res = await this.request('/users/')
+      if (res.ok) this.users = await res.json()
+    },
+
+    async loadLogs() {
+      const res = await this.request('/logs/')
+      if (res.ok) this.logs = await res.json()
+    },
+
+    async loadVacancies() {
+      const res = await this.request('/vacancies/')
+      if (res.ok) this.vacancies = await res.json()
+    },
+
+    async loadResumes() {
+      const res = await this.request('/resumes/')
+      if (res.ok) this.resumes = await res.json()
+    },
+
+    async loadReports() {
+      const res = await this.request('/reports/')
+      if (res.ok) this.reports = await res.json()
+    },
+
+    // --- Действия ---
+
+    async addUser() {
+      const res = await this.request('/users/', {
+        method: 'POST',
+        body: JSON.stringify(this.newUser),
+      })
+      if (res.ok) {
+        this.showMsg('Пользователь создан')
+        this.newUser = { first_name: '', last_name: '', email: '', password: '', role: 'hr', phone: '' }
+        this.loadUsers()
+      } else {
+        const d = await res.json()
+        this.showMsg(d.error || 'Ошибка', 'error')
+      }
+    },
+
+    // --- Редактирование пользователя ---
+
+    startEditUser(u) {
+      this.editingUser = {
+        id: u.id,
+        first_name: u.first_name,
+        last_name: u.last_name,
+        surname: u.surname || '',
+        phone: u.phone || '',
+        role: u.role,
+        password: '',
+      }
+    },
+
+    cancelEditUser() {
+      this.editingUser = null
+    },
+
+    async updateUser() {
+      const payload = { ...this.editingUser }
+      if (!payload.password) delete payload.password
+      const res = await this.request(`/users/${payload.id}/`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) {
+        this.showMsg('Пользователь обновлён')
+        this.editingUser = null
+        this.loadUsers()
+      } else {
+        const d = await res.json()
+        this.showMsg(d.error || 'Ошибка', 'error')
+      }
+    },
+
+    async deleteUser(id) {
+      if (!confirm('Удалить пользователя?')) return
+      const res = await this.request(`/users/${id}/`, { method: 'DELETE' })
+      if (res.ok) {
+        this.showMsg('Пользователь удалён')
+        this.loadUsers()
+      }
+    },
+
+    async downloadBackup() {
+      const res = await this.request('/backup/')
+
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'backup_${new Date().toISOString().slice(0,10)}.sql'
+        a.click()
+        window.URL.revokeObjectURL(url)
+        this.showMsg('Резервная копия скачана!')
+      } else {
+        this.showMsg('Ошибка резервного копирования', 'error')
+      }
+    },
+
+    async addVacancy() {
+      const v = this.newVacancy
+      const descParts = []
+      if (v.exp_required) descParts.push(`Требуемый опыт: ${v.exp_required} лет`)
+      if (v.employment)   descParts.push(`Занятость: ${v.employment}`)
+      if (v.industry)     descParts.push(`Отрасль: ${v.industry}`)
+      if (v.description)  descParts.push(`Требования: ${v.description}`)
+      const payload = {
+        title: v.title,
+        company: v.company,
+        min_salary: v.min_salary || null,
+        max_salary: v.max_salary || null,
+        location: v.location,
+        description: descParts.join(' | '),
+      }
+      const res = await this.request('/vacancies/', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) {
+        this.showMsg('Вакансия добавлена')
+        this.newVacancy = { title: '', description: '', company: '', min_salary: '', max_salary: '', location: '', exp_required: '', employment: '', industry: '' }
+        this.loadVacancies()
+      } else {
+        const d = await res.json()
+        this.showMsg(JSON.stringify(d), 'error')
+      }
+    },
+
+    async archiveVacancy(id) {
+      const res = await this.request(`/vacancies/${id}/`, { method: 'DELETE' })
+      if (res.ok) {
+        this.showMsg('Вакансия перемещена в архив')
+        this.loadVacancies()
+      }
+    },
+
+    async openVacancy(id) {
+      const res = await this.request(`/vacancies/${id}/`)
+      if (res.ok) {
+        this.selectedVacancy = await res.json()
+        this.tab = 'vacancy-detail'
+        this.message = ''
+      } else {
+        this.showMsg('Не удалось загрузить вакансию', 'error')
+      }
+    },
+
+    async openResume(id) {
+      const res = await this.request(`/resumes/${id}/`)
+      if (res.ok) {
+        this.selectedResume = await res.json()
+        this.tab = 'resume-detail'
+        this.message = ''
+      } else {
+        this.showMsg('Не удалось загрузить резюме', 'error')
+      }
+    },
+
+    async reviewResumeDetail(id, newStatus) {
+      const comment = newStatus === 'rejected'
+        ? prompt('Причина отклонения (необязательно):') || ''
+        : ''
+      const res = await this.request(`/resumes/${id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus, comment }),
+      })
+      if (res.ok) {
+        this.resumes = this.resumes.filter(r => r.id !== id)
+        this.showMsg(`Статус обновлён: ${this.statusLabel(newStatus)}`)
+        this.go('resumes')
+      }
+    },
+
+    async addResume() {
+      const r = this.newResume
+      const parts = []
+      if (r.exp)        parts.push(`Опыт: ${r.exp} лет`)
+      if (r.education)  parts.push(`Образование: ${r.education}`)
+      if (r.employment) parts.push(`Занятость: ${r.employment}`)
+      if (r.industry)   parts.push(`Отрасль: ${r.industry}`)
+      if (r.salary)     parts.push(`Зарплата ожидаемая: ${r.salary}`)
+      if (r.skills)     parts.push(`Навыки: ${r.skills}`)
+      const content = parts.join(' | ')
+      const res = await this.request('/resumes/', {
+        method: 'POST',
+        body: JSON.stringify({ title: r.title, content }),
+      })
+      if (res.ok) {
+        this.showMsg('Резюме добавлено')
+        this.newResume = { title: '', exp: '', education: '', employment: '', industry: '', salary: '', skills: '' }
+        this.loadResumes()
+      } else {
+        this.showMsg('Ошибка', 'error')
+      }
+    },
+
+    async reviewResume(id, newStatus) {
+      const comment = newStatus === 'rejected'
+        ? prompt('Причина отклонения (необязательно):') || ''
+        : ''
+
+      const res = await this.request(`/resumes/${id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus, comment }),
+      })
+      if (res.ok) {
+        this.resumes = this.resumes.filter(r => r.id !== id)
+        this.showMsg(`Статус обновлён: ${this.statusLabel(newStatus)}`)
+      }
+    },
+
+    async runAnalysis() {
+      this.analyzing = true
+      this.analysisResult = null
+
+      const res = await this.request('/analyze/', {
+        method: 'POST',
+        body: JSON.stringify({ vacancy_id: this.selectedVacancyId }),
+      })
+
+      const data = await res.json()
+      this.analyzing = false
+
+      if (res.ok) {
+        this.analysisResult = data
+        this.showMsg(`Анализ завершён. Отчёт #${data.report_id}`)
+      } else {
+        this.showMsg(data.error || 'Ошибка анализа', 'error')
+      }
+    },
+    async exportReport(id) {
+    const res = await this.request(`/reports/${id}/export/`, {
+        method: 'GET',
+    })
+
+    if (res.ok) {
+        // Получаем файл и скачиваем
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `report_${id}.xlsx`
+        a.click()
+        window.URL.revokeObjectURL(url)
+    } else {
+        this.showMsg('Ошибка экспорта', 'error')
+    }
+  },
+}
+}).mount('#app')
+</script>
+</body>
+</html>
