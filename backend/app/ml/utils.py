@@ -47,7 +47,7 @@ def format_vacancy_for_ml(vacancy_obj):
 
     exprns = _extract(desc, 'Требуемый опыт') or reqs.get('Опыт работы', '')
     if exprns:
-        parts.append(f"Требуемый опыт: {exprns} лет")
+        parts.append(f"Требуемый опыт: {exprns}")
 
     employment = _extract(desc, 'Занятость')
     if employment :

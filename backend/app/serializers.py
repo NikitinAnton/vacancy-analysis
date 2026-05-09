@@ -52,7 +52,7 @@ class ResumeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resume
         fields = [
-            'id', 'title', 'content', 'source',
+            'id', 'title', 'content', 'email', 'phone', 'source',
             'comment', 'status', 'created_at', 'updated_at', 'skills'
         ]
 
@@ -106,23 +106,30 @@ class VacancySerializer(serializers.ModelSerializer):
 class ReportMetricSerializer(serializers.ModelSerializer):
     resume_title = serializers.CharField(source='resume.title', read_only=True)
     resume_status = serializers.CharField(source='resume.status', read_only=True)
+    resume_email = serializers.CharField(source='resume.email', read_only=True)
+    resume_phone = serializers.CharField(source='resume.phone', read_only=True)
     metric_name = serializers.CharField(source='metric.name', read_only=True)
 
     class Meta:
         model = ReportMetric
         fields = [
             'id', 'resume', 'resume_title',
-            'resume_status', 'metric_name', 'value'
+            'resume_status', 'resume_email', 'resume_phone',
+            'metric_name', 'value'
         ]
 
 
 class ReportSerializer(serializers.ModelSerializer):
-    metrics = ReportMetricSerializer(many=True, read_only=True)
+    metrics = serializers.SerializerMethodField()
     vacancy_title = serializers.CharField(source='vacancy.title', read_only=True)
 
     class Meta:
         model = Report
         fields = ['id', 'vacancy', 'vacancy_title', 'created_at', 'metrics']
+
+    def get_metrics(self, obj):
+        qs = obj.metrics.select_related('resume', 'metric').order_by('-value')
+        return ReportMetricSerializer(qs, many=True).data
 
 
 class UserActionLogSerializer(serializers.ModelSerializer):

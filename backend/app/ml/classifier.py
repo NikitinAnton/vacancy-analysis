@@ -13,14 +13,31 @@ class MLPScorer(nn.Module):
     def __init__(self, input_dim):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Linear(input_dim, 256),
-            nn.ReLU(),
+            #1 слой
+            nn.Linear(input_dim, 512),
+            nn.BatchNorm1d(512),
+            nn.SiLU(),
+            nn.Dropout(0.4),
+
+            #2 слой
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.SiLU(),
             nn.Dropout(0.3),
 
-            nn.Linear(256, 64),
-            nn.ReLU(),
+            #3 слой
+            nn.Linear(256, 128),
+            nn.BatchNorm1d(128),
+            nn.SiLU(),
+            nn.Dropout(0.3),
+
+            #4 слой
+            nn.Linear(128, 64),
+            nn.BatchNorm1d(64),
+            nn.SiLU(),
             nn.Dropout(0.2),
-            
+
+            #Выход (0/1)
             nn.Linear(64, 1),
             nn.Sigmoid()
         )
@@ -76,10 +93,19 @@ def get_score(vacancy_text, resume_text):
     v_emb = embed(vacancy_text)
     r_emb = embed(resume_text)
 
+    diff = v_emb - r_emb
+    abs_diff = torch.abs(diff)
+    prod = v_emb * r_emb
+
     print(f"VECTORS: Vacancy({v_emb.shape}), Resume({r_emb.shape})")
     
     # Объединяем (cat) как в Jupyter
-    combined = torch.cat([v_emb, r_emb]).unsqueeze(0) # добавляем размерность батча
+    combined = torch.cat([v_emb, 
+                          r_emb,
+                          diff,
+                          abs_diff,
+                          prod
+                          ]).unsqueeze(0) # добавляем размерность батча
     
     with torch.no_grad():
         score = model(combined.float()).item()

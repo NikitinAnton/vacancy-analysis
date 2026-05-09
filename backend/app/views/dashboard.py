@@ -67,6 +67,15 @@ class DashboardView(APIView):
             .order_by('-count')[:8]
         )
 
+        # Вакансии по отраслям
+        vacancies_by_industry = list(
+            VacancyRequirement.objects
+            .filter(requirement__name='Отрасль', vacancy__is_active=True)
+            .values('value')
+            .annotate(count=Count('vacancy'))
+            .order_by('-count')[:8]
+        )
+
         # Статистика по последним 10 отчётам
         recent_reports = []
         reports = report_qs.select_related('vacancy').order_by('-created_at')[:10]
@@ -101,6 +110,7 @@ class DashboardView(APIView):
             },
             'top_vacancies': list(top_vacancies),
             'vacancies_by_city': vacancies_by_city,
+            'vacancies_by_industry': vacancies_by_industry,
             'recent_reports': recent_reports,
             'users_by_role': {
                 'admin': User.objects.filter(role__name=Role.ADMIN).count(),

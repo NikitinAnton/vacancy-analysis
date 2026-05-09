@@ -435,9 +435,9 @@
               <h3 style="margin:0 0 6px">📊 Статус резюме</h3>
               <canvas ref="chartResumes" height="250px"></canvas>
             </div>
-            <div class="card" style="padding:10px; height: 450px;" v-if="dashboard.users_by_role">
-              <h3 style="margin:0 0 6px">👤 Пользователи по ролям</h3>
-              <canvas ref="chartUsers" height="200px"></canvas>
+            <div class="card" style="padding:10px; height: 450px;" v-if="dashboard.vacancies_by_industry && dashboard.vacancies_by_industry.length">
+              <h3 style="margin:0 0 6px">Распределение вакансий по отраслям</h3>
+              <canvas ref="chartIndustry" height="200px"></canvas>
             </div>
           </div>
 
@@ -755,6 +755,14 @@
                 <label>Зарплата ожидаемая</label>
                 <input v-model="newResume.salary" type="number" placeholder="80000" />
               </div>
+              <div class="form-group">
+                <label>Email кандидата</label>
+                <input v-model="newResume.email" type="email" placeholder="candidate@mail.ru" />
+              </div>
+              <div class="form-group">
+                <label>Телефон кандидата</label>
+                <input v-model="newResume.phone" placeholder="+7..." />
+              </div>
               <div class="form-group full">
                 <label>Навыки (через запятую)</label>
                 <input v-model="newResume.skills" placeholder="Python, Django, SQL" />
@@ -818,6 +826,8 @@
           <div class="resume-detail-meta">
             <span>📅 Добавлено: {{ formatDate(selectedResume.created_at) }}</span>
             <span>🔄 Обновлено: {{ formatDate(selectedResume.updated_at) }}</span>
+            <span v-if="selectedResume.email">✉️ {{ selectedResume.email }}</span>
+            <span v-if="selectedResume.phone">📞 {{ selectedResume.phone }}</span>
             <span v-if="selectedResume.source">🌐 Источник: {{ selectedResume.source }}</span>
           </div>
 
@@ -834,7 +844,6 @@
               </span>
             </div>
           </div>
-
           <div class="card" v-if="selectedResume.comment">
             <h3>Комментарий</h3>
             <p style="font-size:14px; color:#555">{{ selectedResume.comment }}</p>
@@ -931,7 +940,9 @@
                 @click="openResume(m.resume)"
                 style="display:flex; justify-content:space-between; padding:4px 6px; font-size:13px; border-top:1px solid #f0f0f0; cursor:pointer; border-radius:4px;"
                 onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''">
-                <span style="color:#1a237e; text-decoration:underline">{{ m.resume_title }}</span>
+                <div>
+                  <span style="color:#1a237e; text-decoration:underline">{{ m.resume_title }}</span>
+                </div>
                 <div style="display:flex; align-items:center; gap:8px">
                   <span :style="{ color: parseFloat(m.value) >= 0.5 ? 'green' : 'red' }">
                     {{ (parseFloat(m.value) * 100).toFixed(1) }}%
@@ -979,7 +990,7 @@ createApp({
 
       newUser: { first_name: '', last_name: '', email: '', password: '', role: 'hr', phone: '' },
       newVacancy: { title: '', description: '', company: '', min_salary: '', max_salary: '', location: '', exp_required: '', employment: '', industry: '' },
-      newResume: { title: '', exp: '', education: '', employment: '', industry: '', salary: '', skills: '' },
+      newResume: { title: '', exp: '', education: '', employment: '', industry: '', salary: '', skills: '', email: '', phone: '' },
 
       selectedVacancyId: '',
       analysisResult: null,
@@ -1127,13 +1138,13 @@ createApp({
         })
       }
 
-      if (this.$refs.chartUsers && this.dashboard.users_by_role) {
-        const u = this.dashboard.users_by_role
-        this.charts.users = new Chart(this.$refs.chartUsers, {
+      if (this.$refs.chartIndustry && this.dashboard.vacancies_by_industry && this.dashboard.vacancies_by_industry.length) {
+        const ind = this.dashboard.vacancies_by_industry
+        this.charts.industry = new Chart(this.$refs.chartIndustry, {
           type: 'bar',
           data: {
-            labels: ['Администраторы', 'Руководители', 'HR-менеджеры'],
-            datasets: [{ label: 'Кол-во', data: [u.admin, u.manager, u.hr], backgroundColor: ['#1a237e', '#283593', '#3949ab'] }]
+            labels: ind.map(i => i.value || 'Не указана'),
+            datasets: [{ label: 'Вакансий', data: ind.map(i => i.count), backgroundColor: ['#1a237e','#283593','#3949ab','#3f51b5','#5c6bc0','#7986cb','#9fa8da','#c5cae9'] }]
           },
           options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
         })
@@ -1287,6 +1298,7 @@ createApp({
         min_salary: v.min_salary || null,
         max_salary: v.max_salary || null,
         location: v.location,
+        industry: v.industry || null,
         description: descParts.join(' | '),
       }
       const res = await this.request('/vacancies/', {
@@ -1360,11 +1372,11 @@ createApp({
       const content = parts.join(' | ')
       const res = await this.request('/resumes/', {
         method: 'POST',
-        body: JSON.stringify({ title: r.title, content }),
+        body: JSON.stringify({ title: r.title, content, email: r.email || null, phone: r.phone || null }),
       })
       if (res.ok) {
         this.showMsg('Резюме добавлено')
-        this.newResume = { title: '', exp: '', education: '', employment: '', industry: '', salary: '', skills: '' }
+        this.newResume = { title: '', exp: '', education: '', employment: '', industry: '', salary: '', skills: '', email: '', phone: '' }
         this.loadResumes()
       } else {
         this.showMsg('Ошибка', 'error')
@@ -1405,6 +1417,7 @@ createApp({
         this.showMsg(data.error || 'Ошибка анализа', 'error')
       }
     },
+    
     async exportReport(id) {
     const res = await this.request(`/reports/${id}/export/`, {
         method: 'GET',

@@ -65,6 +65,16 @@ class VacancyListView(APIView):
                     value=data['location']
                 )
 
+            # Отрасль
+            if data.get('industry'):
+                req, _ = Requirement.objects.get_or_create(name='Отрасль')
+                VacancyRequirement.objects.create(
+                    vacancy=vacancy,
+                    requirement=req,
+                    requirement_type=req_type_required,
+                    value=data['industry']
+                )
+
             return Response(VacancySerializer(vacancy).data, status=201)
 
         except Exception as e:

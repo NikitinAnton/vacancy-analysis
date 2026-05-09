@@ -132,6 +132,10 @@ class Resume(models.Model):
 
     title = models.CharField(max_length=50)
     content = models.TextField()
+
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=20, null=True, blank=True)
+
     source = models.TextField(null=True, blank=True)
     comment = models.TextField(null=True, blank=True)
     status = models.CharField(
