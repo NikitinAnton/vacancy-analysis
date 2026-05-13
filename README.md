@@ -123,17 +123,23 @@ pip install -r requirements.txt
 ### 5. Настройка базы данных
 В файле config/settings.py при необходимости указать параметры подключения к PostgreSQL.
 ```
-# Подключение к БД
+python
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'название бд',
-        'USER': 'пользователь',
-        'PASSWORD': 'пароль',
-        'HOST': 'localhost',
-        'PORT': '5434',
+        'NAME': 'vacancy_db',       # Имя базы данных (создайте её заранее)
+        'USER': 'postgres',        # Имя пользователя PostgreSQL
+        'PASSWORD': 'postgres',    # Пароль (по умолчанию 'postgres')
+        'HOST': 'localhost',       # Хост (если БД на этом же компьютере)
+        'PORT': '5432',            # Порт PostgreSQL
     }
 }
+```
+#### Примечание:
+Перед запуском создай базу данных vacancy_db в PostgreSQL:
+```
+sql
+CREATE DATABASE vacancy_db;
 ```
 Выполнить миграции:
 ```
