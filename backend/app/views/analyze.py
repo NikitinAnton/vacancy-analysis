@@ -5,11 +5,25 @@ from django.conf import settings
 import openpyxl
 from django.http import HttpResponse
 import io
+import requests
 
 from ..models import Vacancy, Resume, Report, ReportMetric, AnalysisMetric, UserActionLog
 from ..permissions import role_required
-from ..ml.classifier import get_score
 from ..ml.utils import format_resume_for_ml, format_vacancy_for_ml
+
+
+def get_score(vacancy_text: str, resume_text: str) -> float:
+    ml_url = getattr(settings, 'ML_SERVICE_URL', 'http://localhost:8001')
+    try:
+        response = requests.post(
+            f"{ml_url}/score",
+            json={"vacancy_text": vacancy_text, "resume_text": resume_text},
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()["score"]
+    except requests.RequestException as e:
+        raise RuntimeError(f"ML-сервис недоступен: {e}")
 
 
 

@@ -1,116 +1,116 @@
-import os
-import json
-import pickle
-import torch
-import torch.nn as nn
-from .embedder import embed
+# import os
+# import json
+# import pickle
+# import torch
+# import torch.nn as nn
+# from .embedder import embed
 
-BASE_DIR = os.path.dirname(__file__)
-MODEL_PATH = os.path.join(BASE_DIR, 'mlp_model.pkl')
-META_PATH = os.path.join(BASE_DIR, 'model_metadata.json')
+# BASE_DIR = os.path.dirname(__file__)
+# MODEL_PATH = os.path.join(BASE_DIR, 'mlp_model.pkl')
+# META_PATH = os.path.join(BASE_DIR, 'model_metadata.json')
 
-class MLPScorer(nn.Module):
-    def __init__(self, input_dim):
-        super().__init__()
-        self.layers = nn.Sequential(
-            #1 слой
-            nn.Linear(input_dim, 512),
-            nn.BatchNorm1d(512),
-            nn.SiLU(),
-            nn.Dropout(0.4),
+# class MLPScorer(nn.Module):
+#     def __init__(self, input_dim):
+#         super().__init__()
+#         self.layers = nn.Sequential(
+#             #1 слой
+#             nn.Linear(input_dim, 512),
+#             nn.BatchNorm1d(512),
+#             nn.SiLU(),
+#             nn.Dropout(0.4),
 
-            #2 слой
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            nn.SiLU(),
-            nn.Dropout(0.3),
+#             #2 слой
+#             nn.Linear(512, 256),
+#             nn.BatchNorm1d(256),
+#             nn.SiLU(),
+#             nn.Dropout(0.3),
 
-            #3 слой
-            nn.Linear(256, 128),
-            nn.BatchNorm1d(128),
-            nn.SiLU(),
-            nn.Dropout(0.3),
+#             #3 слой
+#             nn.Linear(256, 128),
+#             nn.BatchNorm1d(128),
+#             nn.SiLU(),
+#             nn.Dropout(0.3),
 
-            #4 слой
-            nn.Linear(128, 64),
-            nn.BatchNorm1d(64),
-            nn.SiLU(),
-            nn.Dropout(0.2),
+#             #4 слой
+#             nn.Linear(128, 64),
+#             nn.BatchNorm1d(64),
+#             nn.SiLU(),
+#             nn.Dropout(0.2),
 
-            #Выход (0/1)
-            nn.Linear(64, 1),
-            nn.Sigmoid()
-        )
+#             #Выход (0/1)
+#             nn.Linear(64, 1),
+#             nn.Sigmoid()
+#         )
 
-    def forward(self, x):
-        return self.layers(x)
-
-
-class _ModelUnpickler(pickle.Unpickler):
-    """Перенаправляет __main__.MLPScorer на наш класс при десериализации"""
-    def find_class(self, module, name):
-        if name == 'MLPScorer':
-            return MLPScorer
-        return super().find_class(module, name)
+#     def forward(self, x):
+#         return self.layers(x)
 
 
-# Глобальная модель — инициализируется один раз
-_model = None
+# class _ModelUnpickler(pickle.Unpickler):
+#     """Перенаправляет __main__.MLPScorer на наш класс при десериализации"""
+#     def find_class(self, module, name):
+#         if name == 'MLPScorer':
+#             return MLPScorer
+#         return super().find_class(module, name)
 
 
-def load_model():
-    global _model
-    if _model is None:
-        with open(META_PATH, 'r') as f:
-            meta = json.load(f)
-
-        with open(MODEL_PATH, 'rb') as f:
-            loaded = _ModelUnpickler(f).load()
-
-        if isinstance(loaded, dict):
-            # pkl содержит state_dict
-            _model = MLPScorer(input_dim=meta['input_dim'])
-            _model.load_state_dict(loaded)
-
-        elif isinstance(loaded, nn.Module):
-            # pkl содержит готовый объект модели
-            _model = loaded
-        else:
-            raise ValueError(f'Неизвестный формат модели: {type(loaded)}')
-
-        _model.eval()
-    return _model
+# # Глобальная модель — инициализируется один раз
+# _model = None
 
 
-def get_score(vacancy_text, resume_text):
-    model = load_model()
+# def load_model():
+#     global _model
+#     if _model is None:
+#         with open(META_PATH, 'r') as f:
+#             meta = json.load(f)
+
+#         with open(MODEL_PATH, 'rb') as f:
+#             loaded = _ModelUnpickler(f).load()
+
+#         if isinstance(loaded, dict):
+#             # pkl содержит state_dict
+#             _model = MLPScorer(input_dim=meta['input_dim'])
+#             _model.load_state_dict(loaded)
+
+#         elif isinstance(loaded, nn.Module):
+#             # pkl содержит готовый объект модели
+#             _model = loaded
+#         else:
+#             raise ValueError(f'Неизвестный формат модели: {type(loaded)}')
+
+#         _model.eval()
+#     return _model
+
+
+# def get_score(vacancy_text, resume_text):
+#     model = load_model()
     
-    print(f"\n--- [ML INPUT START] ---")
-    print(f"VACANCY: {vacancy_text[:100]}...")
-    print(f"RESUME:  {resume_text[:100]}...")
+#     print(f"\n--- [ML INPUT START] ---")
+#     print(f"VACANCY: {vacancy_text[:100]}...")
+#     print(f"RESUME:  {resume_text[:100]}...")
 
-    # Получаем эмбеддинги
-    v_emb = embed(vacancy_text)
-    r_emb = embed(resume_text)
+#     # Получаем эмбеддинги
+#     v_emb = embed(vacancy_text)
+#     r_emb = embed(resume_text)
 
-    diff = v_emb - r_emb
-    abs_diff = torch.abs(diff)
-    prod = v_emb * r_emb
+#     diff = v_emb - r_emb
+#     abs_diff = torch.abs(diff)
+#     prod = v_emb * r_emb
 
-    print(f"VECTORS: Vacancy({v_emb.shape}), Resume({r_emb.shape})")
+#     print(f"VECTORS: Vacancy({v_emb.shape}), Resume({r_emb.shape})")
     
-    # Объединяем (cat) как в Jupyter
-    combined = torch.cat([v_emb, 
-                          r_emb,
-                          diff,
-                          abs_diff,
-                          prod
-                          ]).unsqueeze(0) # добавляем размерность батча
+#     # Объединяем (cat) как в Jupyter
+#     combined = torch.cat([v_emb, 
+#                           r_emb,
+#                           diff,
+#                           abs_diff,
+#                           prod
+#                           ]).unsqueeze(0) # добавляем размерность батча
     
-    with torch.no_grad():
-        score = model(combined.float()).item()
+#     with torch.no_grad():
+#         score = model(combined.float()).item()
 
-    print(f"PREDICTION SCORE: {score:.4f}")
-    print(f"--- [ML INPUT END] ---\n")
+#     print(f"PREDICTION SCORE: {score:.4f}")
+#     print(f"--- [ML INPUT END] ---\n")
     
-    return round(score, 4)
+#     return round(score, 4)

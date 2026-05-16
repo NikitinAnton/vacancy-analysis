@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -34,11 +35,11 @@ MIDDLEWARE = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'vacancy_db',
-        'USER': 'postgres',
-        'PASSWORD': '1',
-        'HOST': 'localhost',
-        'PORT': '5434',
+        'NAME': os.environ.get('DB_NAME', 'vacancy_db'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', '1'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5434'),
     }
 }
 
@@ -71,3 +72,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Порог релевантности резюме
 RELEVANCE_THRESHOLD = 0.5
+
+# ML микросервис
+ML_SERVICE_URL = os.environ.get('ML_SERVICE_URL', 'http://localhost:8001')

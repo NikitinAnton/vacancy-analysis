@@ -1,0 +1,44 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15
+    container_name: vacancy_db
+    environment:
+      POSTGRES_DB: vacancy_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  ml_service:
+    build:
+      context: ./ml_service
+    container_name: vacancy_ml
+    ports:
+      - "8001:8001"
+
+  web:
+    build: .
+    container_name: vacancy_web
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+      - ./frontend:/frontend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - ml_service
+    environment:
+      DB_NAME: vacancy_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: db
+      DB_PORT: 5432
+      ML_SERVICE_URL: http://ml_service:8001
+
+volumes:
+  postgres_data:
