@@ -1,4 +1,4 @@
-# Веб‑приложение классификации и анализа вакансий работодателей
+# Веб‑приложение для анализа вакансий и оценки релевантности резюме на основе методов машинного обучения 
 
 ---
 
@@ -87,80 +87,19 @@
 | ROC-AUC    | 0.9450      |
 
 ## 🚀 ИНСТРУКЦИЯ ПО СБОРКЕ И ЗАПУСКУ ПРОГРАММЫ
-### 1. Требования к программному обеспечению
-Для корректной работы системы необходимо наличие следующего программного обеспечения:
-- Python версии 3.10 и выше
-- Git
-- PostgreSQL
-- Операционная система Windows / Linux / macOS
-### 2. Клонирование репозитория
-Выполнить команду в терминале:
+1. Установите на целевой компьютер:   
+- Docker Desktop    
+- Git  
+    
+2. Клонируйте репозиторий:
 ```
-bash
 git clone https://github.com/NikitinAnton/vacancy-analysis.git
-cd vacancy-analysis/backend
 ```
-### 3. Создание виртуального окружения
-Создать и активировать виртуальное окружение:   
-Windows:
 ```
-bash
-python -m venv .venv
-.venv\Scripts\activate
+cd vacancy-analysis 
 ```
-Linux/macOS:
+3. Запустите всё одной командой:
 ```
-bash
-python3 -m venv .venv
-source .venv/bin/activate
+docker-compose up --build
 ```
-### 4. Установка зависимостей
-Установить необходимые библиотеки:
-```
-bash
-pip install -r requirements.txt
-```
-### 5. Настройка базы данных
-В файле config/settings.py при необходимости указать параметры подключения к PostgreSQL.
-```
-python
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'vacancy_db',       # Имя базы данных (создайте её заранее)
-        'USER': 'postgres',        # Имя пользователя PostgreSQL
-        'PASSWORD': 'postgres',    # Пароль (по умолчанию 'postgres')
-        'HOST': 'localhost',       # Хост (если БД на этом же компьютере)
-        'PORT': '5432',            # Порт PostgreSQL
-    }
-}
-```
-#### Примечание:
-Перед запуском создай базу данных vacancy_db в PostgreSQL:
-```
-sql
-CREATE DATABASE vacancy_db;
-```
-Выполнить миграции:
-```
-python manage.py migrate
-```
-### 6. Инициализация начальных данных
-Создать роли пользователей и базовые записи:
-```
-python
-python manage.py init_data
-```
-### 7. Запуск сервера
-Запустить сервер разработки:
-```
-python
-python manage.py runserver
-```
-После запуска система будет доступна по адресу:
-http://localhost:8000/
-### 8. Запуск модуля машинного обучения
-Файл обученной модели mlp_model.pkl должен находиться в каталоге:
-backend/app/ml/
-Модель загружается автоматически при первом обращении к функции анализа.
 
